@@ -1,0 +1,4 @@
+.DS_Store
+data/cvpr15_MSRAHandGestureDB/*
+preprocess/P[0-9]
+train_eval/__pycache__
