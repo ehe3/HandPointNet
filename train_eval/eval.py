@@ -77,36 +77,54 @@ if opt.ngpu > 1:
     netR.netR_2 = torch.nn.DataParallel(netR.netR_2, range(opt.ngpu))
     netR.netR_3 = torch.nn.DataParallel(netR.netR_3, range(opt.ngpu))
 if opt.model != '':
-    netR.load_state_dict(torch.load(os.path.join(save_dir, opt.model)))
-    
-netR.cuda()
-print(netR)
+    # netR.load_state_dict(torch.load(os.path.join(save_dir, opt.model)))
+    netR.load_state_dict(torch.load(os.path.join(save_dir, opt.model), map_location='cpu'))
 
-criterion = nn.MSELoss(size_average=True).cuda()
+# netR.cuda()
+
+# criterion = nn.MSELoss(size_average=True).cuda()
+criterion = nn.MSELoss(size_average=True)
 
 # 3. evaluation
-torch.cuda.synchronize()
+# torch.cuda.synchronize()
 
 netR.eval()
 test_mse = 0.0
 test_wld_err = 0.0
 timer = time.time()
 for i, data in enumerate(tqdm(test_dataloader, 0)):
-	torch.cuda.synchronize()
+	# torch.cuda.synchronize()
 	# 3.1 load inputs and targets
+
+	'''
+	points: torch.Tensor, [32, 1024, 6]
+	volume_length: torch.Tensor, [32, 1]
+	gt_pca: torch.Tensor, [32, 42]
+	gt_xyz: torch.Tensor, [32, 63]
+	'''
 	points, volume_length, gt_pca, gt_xyz = data
-	gt_pca = Variable(gt_pca, volatile=True).cuda()
-	points, volume_length, gt_xyz = points.cuda(), volume_length.cuda(), gt_xyz.cuda()
+
+	# gt_pca = Variable(gt_pca, volatile=True).cuda()
+	gt_pca = Variable(gt_pca, volatile=True)
+	# points, volume_length, gt_xyz = points.cuda(), volume_length.cuda(), gt_xyz.cuda()
+	points, volume_length, gt_xyz = points, volume_length, gt_xyz
 	
 	# points: B * 1024 * 6
+	'''
+	inputs_level1: torch.Tensor, [32, 3, 512, 1]
+	inputs_level1_center: torch.Tensor, [32, 6, 512, 64]
+	'''
 	inputs_level1, inputs_level1_center = group_points(points, opt)
 	inputs_level1, inputs_level1_center = Variable(inputs_level1, volatile=True), Variable(inputs_level1_center, volatile=True)
 	
 	# 3.2 compute output
+	'''
+	estimation: torch.Tensor, [32, 42]
+	'''
 	estimation = netR(inputs_level1, inputs_level1_center)
 	loss = criterion(estimation, gt_pca)*opt.PCA_SZ
-	torch.cuda.synchronize()
-	test_mse = test_mse + loss.data[0]*len(points)
+	# torch.cuda.synchronize()
+	test_mse = test_mse + loss.item()*len(points)
 
 	# 3.3 compute error in world cs        
 	outputs_xyz = test_data.PCA_mean.expand(estimation.data.size(0), test_data.PCA_mean.size(1))
@@ -119,7 +137,7 @@ for i, data in enumerate(tqdm(test_dataloader, 0)):
 	test_wld_err = test_wld_err + diff_mean_wld.sum()
 	
 # time taken
-torch.cuda.synchronize()
+# torch.cuda.synchronize()
 timer = time.time() - timer
 timer = timer / len(test_data)
 print('==> time to learn 1 sample = %f (ms)' %(timer*1000))
