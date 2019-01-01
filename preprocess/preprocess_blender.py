@@ -4,7 +4,6 @@ import math
 import struct
 import pptk
 import cv2
-import os
 
 np.set_printoptions(threshold=np.nan)
 
@@ -156,24 +155,22 @@ def preprocess(depth_map_path, gt_path):
         jnt_xyz = np.asarray(jnt_xyz).astype('float').reshape((-1,3))
     jnt_xyz_normalized = np.matmul(jnt_xyz, coeff) / max_bb3d_len
     jnt_xyz_normalized -= offset
+    plot(foot_points_normalized_sampled, jnt_xyz_normalized)
 
     return pc, coeff, max_bb3d_len, offset, jnt_xyz_normalized
 
 
 if __name__ == "__main__":
-    dir = '/Volumes/AndrewJayZhou/Dev/HandPointNet/preprocess/tmp'
+    dir = '/Volumes/AndrewJayZhou/Dataset/FootPoseDepth/syn/v2/0000'
     depth_map_path = '/Volumes/AndrewJayZhou/Dataset/FootPoseDepth/syn/v2/0000/0000.exr'
     gt_path        = '/Volumes/AndrewJayZhou/Dataset/FootPoseDepth/syn/v2/0000/0000_joint_pos.txt'
 
     point_cloud_FPS, volume_rotate, volume_length, volume_offset, volume_gt_xyz = preprocess(depth_map_path, gt_path)
-    np.save(os.path.join(dir, 'Point_Cloud_FPS.npy'), point_cloud_FPS)
-    np.save(os.path.join(dir, 'Volume_rotate.npy'), volume_rotate)
-    np.save(os.path.join(dir, 'Volume_length.npy'), volume_length)
-    np.save(os.path.join(dir, 'Volume_offset.npy'), volume_offset)
-    np.save(os.path.join(dir, 'Volume_GT_XYZ.npy'), volume_gt_xyz)
-
-
-
+    np.save(os.path.join(dir, 'Point_Cloud_FPS.npy', point_cloud_FPS)
+    np.save(os.path.join(dir, 'Volume_rotate.npy', volume_rotate)
+    np.save(os.path.join(dir, 'Volume_length.npy', volume_length)
+    np.save(os.path.join(dir, 'Volume_offset.npy', volume_offset)
+    np.save(os.path.join(dir, 'Volume_GT_XYZ.npy', volume_gt_xyz)
 
 
 
