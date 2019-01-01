@@ -1,15 +1,22 @@
 import numpy as np 
 from sklearn.decomposition import PCA
+import scipy.io as sio
 import math
 import struct
-# for point cloud calculations, pip install pptk on python 3.6
-import pptk
+import pptk # only works with python 3.6
+
+import torch
+from torch.autograd import Variable
+import argparse
+
+from network import PointNet_Plus
+from utils import group_points
 
 np.set_printoptions(threshold=np.nan)
 
 # 2.1 Read Binary File
 # bin_arr has shape (4827,) - different bin files have different shapes
-with open('./data/cvpr15_MSRAHandGestureDB/P0/1/000000_depth.bin', 'rb') as f:
+with open('../data/cvpr15_MSRAHandGestureDB/P0/1/000000_depth.bin', 'rb') as f:
   # variables are int32
   img_width = int.from_bytes(f.read(4), byteorder='little')
   img_height = int.from_bytes(f.read(4), byteorder='little')
@@ -39,6 +46,7 @@ hand_points = hand_3d[(hand_3d[:,0] != 0) | (hand_3d[:,1] != 0) | (hand_3d[:,2] 
 # 2.3 Create OBB
 pca = PCA(n_components=3)
 pca.fit(hand_points)
+orig_coeff = np.transpose(pca.components_)
 coeff = np.transpose(pca.components_)
 if coeff[1][0] < 0 : coeff[:,0] = -1 * coeff[:,0]
 if coeff[2][2] < 0 : coeff[:,2] = -1 * coeff[:,2]
@@ -87,7 +95,6 @@ hand_points_normalized_sampled = hand_points_rotate_sampled / max_bb3d_len
 
 if NUM_POINTS < SAMPLE_NUM: offset = np.mean(hand_points_rotate, axis=0) / max_bb3d_len
 else : offset = np.mean(hand_points_normalized_sampled, axis=0)
-
 hand_points_normalized_sampled -= offset
 
 # 2.7 FPS Sampling
@@ -125,3 +132,43 @@ sampled_idx_l2 = farthest_point_sampling_fast(pc[0:512, 0:2], 128)
 other_idx = np.setdiff1d(np.asarray([i for i in range(512)]), sampled_idx_l2)
 new_idx = np.append(sampled_idx_l2, other_idx)
 pc[0:512, :] = pc[new_idx, :]
+
+# Test HandPointNet After Preprocess
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--SAMPLE_NUM', type=int, default = 1024,  help='number of sample points')
+parser.add_argument('--JOINT_NUM', type=int, default = 21,  help='number of joints')
+parser.add_argument('--INPUT_FEATURE_NUM', type=int, default = 6,  help='number of input point features')
+parser.add_argument('--PCA_SZ', type=int, default = 42,  help='number of PCA components')
+parser.add_argument('--knn_K', type=int, default = 64,  help='K for knn search')
+parser.add_argument('--sample_num_level1', type=int, default = 512,  help='number of first layer groups')
+parser.add_argument('--sample_num_level2', type=int, default = 128,  help='number of second layer groups')
+parser.add_argument('--ball_radius', type=float, default=0.015, help='square of radius for ball query in level 1')
+parser.add_argument('--ball_radius2', type=float, default=0.04, help='square of radius for ball query in level 2')
+
+opt = parser.parse_args()
+
+net = PointNet_Plus(opt)
+net.load_state_dict(torch.load('./results/P0/pretrained_net.pth', map_location='cpu'))
+net.eval()
+
+inputs = torch.unsqueeze(torch.from_numpy(pc), 0)
+inputs_level1, inputs_level1_center = group_points(inputs.float(), opt)
+with torch.no_grad():
+  inputs_level1, inputs_level1_center = Variable(inputs_level1), Variable(inputs_level1_center)
+estimation = net(inputs_level1, inputs_level1_center)
+
+'''
+estimation: torch.Tensor, [1, 42]
+'''
+outputs_xyz_mat = sio.loadmat('../preprocess/P0/PCA_mean_xyz.mat')
+outputs_xyz = torch.from_numpy(outputs_xyz_mat['PCA_mean_xyz'].astype(np.float32))
+PCA_coeff_mat = sio.loadmat('../preprocess/P0/PCA_coeff.mat')
+PCA_coeff = torch.from_numpy(PCA_coeff_mat['PCA_coeff'][:, 0:42].astype(np.float32)).transpose(0, 1)
+outputs_xyz = torch.addmm(outputs_xyz, estimation, PCA_coeff)
+
+# Unnormalize Output
+outputs_xyz = np.matmul(max_bb3d_len * (outputs_xyz.view(-1, 3).detach().numpy() + offset), np.linalg.inv(coeff)) 
+
+print(outputs_xyz.shape)
+print(outputs_xyz)
