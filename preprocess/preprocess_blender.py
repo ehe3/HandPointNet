@@ -154,13 +154,13 @@ def preprocess(depth_map_path, gt_path):
     with open(gt_path, 'rt') as f:
         jnt_xyz = f.read().split(',')
         jnt_xyz = np.asarray(jnt_xyz).astype('float').reshape((-1,3))
-    # make z value positive
+    # !!!! make z value positive !!!!
     jnt_xyz[:,2] = -jnt_xyz[:,2] 
 
     # normalize gt
     jnt_xyz_normalized = np.matmul(jnt_xyz, coeff) / max_bb3d_len
     jnt_xyz_normalized -= offset
-    
+
     return pc, coeff, max_bb3d_len, offset, jnt_xyz_normalized
 
 
