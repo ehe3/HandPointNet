@@ -1,4 +1,5 @@
 import numpy as np 
+import cv2
 from sklearn.decomposition import PCA
 import scipy.io as sio
 import math
@@ -169,6 +170,27 @@ outputs_xyz = torch.addmm(outputs_xyz, estimation, PCA_coeff)
 
 # Unnormalize Output
 outputs_xyz = np.matmul(max_bb3d_len * (outputs_xyz.view(-1, 3).detach().numpy() + offset), np.linalg.inv(coeff)) 
+outputs_xy = outputs_xyz[:, 0:2]
+outputs_xy[:, 0] = outputs_xy[:, 0] + img_width / 2
+outputs_xy[:, 1] = -1 * outputs_xy[:, 1] + img_height / 2
+prediction_image = np.zeros((img_height, img_width, 3), np.uint8)
+for i in range(21):
+    prediction_image[int(outputs_xy[i, 1]), int(outputs_xy[i, 0])] = [255, 0, 0]
+    prediction_image[int(outputs_xy[i, 1]), int(outputs_xy[i, 0]) + 1] = [255, 0, 0]
+    prediction_image[int(outputs_xy[i, 1]), int(outputs_xy[i, 0]) - 1] = [255, 0, 0]
+    prediction_image[int(outputs_xy[i, 1]) + 1, int(outputs_xy[i, 0])] = [255, 0, 0]
+    prediction_image[int(outputs_xy[i, 1]) + 1, int(outputs_xy[i, 0]) + 1] = [255, 0, 0]
+    prediction_image[int(outputs_xy[i, 1]) + 1, int(outputs_xy[i, 0]) - 1] = [255, 0, 0]
+    prediction_image[int(outputs_xy[i, 1]) - 1, int(outputs_xy[i, 0])] = [255, 0, 0]
+    prediction_image[int(outputs_xy[i, 1]) - 1, int(outputs_xy[i, 0]) + 1] = [255, 0, 0]
+    prediction_image[int(outputs_xy[i, 1]) - 1, int(outputs_xy[i, 0]) + 1] = [255, 0, 0]
 
-print(outputs_xyz.shape)
-print(outputs_xyz)
+prediction_image = prediction_image[bb_top:bb_bottom, bb_left:bb_right]
+
+# Plot Outputs
+hand_depth_rgb = np.zeros((hand_depth.shape[0], hand_depth.shape[1], 3))
+hand_depth_rgb[hand_depth > 1e-6] = [255, 255, 255]
+images = np.hstack((hand_depth_rgb, prediction_image))
+cv2.imshow('prediction', images)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
