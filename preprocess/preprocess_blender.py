@@ -4,29 +4,30 @@ import math
 import struct
 import pptk
 import cv2
+import os
 
 np.set_printoptions(threshold=np.nan)
 
 # Takes in a point cloud and a sample number K and approximates the K furthest points in the PC
 def farthest_point_sampling_fast(point_cloud, sample_num):
-  pc_num = point_cloud.shape[0]
-  if pc_num < sample_num:
-    sampled_idx = np.append(np.asarray([i for i in range(pc_num)]), np.random.randint(pc_num, size=sample_num-pc_num))
-  else:
-    sampled_idx = np.zeros(sample_num, dtype=np.int)
-    sampled_idx[0] = np.random.randint(pc_num, size=1)[0]
-    diff = point_cloud - point_cloud[sampled_idx[0], :]
-    min_dist = np.sum(np.multiply(diff, diff), axis=1)
+    pc_num = point_cloud.shape[0]
+    if pc_num < sample_num:
+        sampled_idx = np.append(np.asarray([i for i in range(pc_num)]), np.random.randint(pc_num, size=sample_num-pc_num))
+    else:
+        sampled_idx = np.zeros(sample_num, dtype=np.int)
+        sampled_idx[0] = np.random.randint(pc_num, size=1)[0]
+        diff = point_cloud - point_cloud[sampled_idx[0], :]
+        min_dist = np.sum(np.multiply(diff, diff), axis=1)
 
-    for i in range(1, sample_num):
-      sampled_idx[i] = np.argmax(min_dist)
-      # update the minimum distance
-      if i < sample_num:
-        valid_idx = np.where(min_dist > 1e-8)[0]
-        diff = point_cloud[valid_idx, :] - point_cloud[sampled_idx[i]]
-        min_dist[valid_idx] = np.minimum(min_dist[valid_idx], np.sum(np.multiply(diff, diff), axis=1))
+        for i in range(sample_num):
+            sampled_idx[i] = np.argmax(min_dist)
+            # update the minimum distance
+            if i < sample_num:
+                valid_idx = np.where(min_dist > 1e-8)[0]
+                diff = point_cloud[valid_idx, :] - point_cloud[sampled_idx[i]]
+                min_dist[valid_idx] = np.minimum(min_dist[valid_idx], np.sum(np.multiply(diff, diff), axis=1))
   
-  return np.unique(sampled_idx)
+    return np.unique(sampled_idx)
 
 def plot(points, gt):
     from matplotlib import pyplot
@@ -65,9 +66,9 @@ def preprocess(depth_map_path, gt_path):
     for i in range(0, bb_height):
       for j in range(0, bb_width):
         idx = j * bb_height + i
-        z = -depth_map[i][j]
-        foot_3d[idx][0] = -1 * (img_width / 2. - (j + bb_left)) * PIXEL_SIZE_mm / FOCAL_BLENDER_mm * abs(z) 
-        foot_3d[idx][1] = (img_height / 2. - (i + bb_top)) * PIXEL_SIZE_mm / FOCAL_BLENDER_mm * abs(z) 
+        z = depth_map[i][j]
+        foot_3d[idx][0] = -1 * (img_width / 2. - (j + bb_left)) * PIXEL_SIZE_mm / FOCAL_BLENDER_mm * z
+        foot_3d[idx][1] = (img_height / 2. - (i + bb_top)) * PIXEL_SIZE_mm / FOCAL_BLENDER_mm * z 
         foot_3d[idx][2] = z
 
     # remove entries where all 3D values are equal to 0
@@ -106,7 +107,7 @@ def preprocess(depth_map_path, gt_path):
 
 
     # 5. Compute Surface Normal
-    normals = pptk.estimate_normals(points=foot_points, k=30, r=np.inf)
+    normals = pptk.estimate_normals(points=foot_points, k=30, r=np.inf, verbose=False)
     normals_sampled = normals[rand_ind]
     sensor_center = np.array([0, 0, 0])
 
@@ -153,24 +154,72 @@ def preprocess(depth_map_path, gt_path):
     with open(gt_path, 'rt') as f:
         jnt_xyz = f.read().split(',')
         jnt_xyz = np.asarray(jnt_xyz).astype('float').reshape((-1,3))
+    # make z value positive
+    jnt_xyz[:,2] = -jnt_xyz[:,2] 
+
+    # normalize gt
     jnt_xyz_normalized = np.matmul(jnt_xyz, coeff) / max_bb3d_len
     jnt_xyz_normalized -= offset
-    plot(foot_points_normalized_sampled, jnt_xyz_normalized)
-
+    
     return pc, coeff, max_bb3d_len, offset, jnt_xyz_normalized
 
 
 if __name__ == "__main__":
-    dir = '/Volumes/AndrewJayZhou/Dataset/FootPoseDepth/syn/v2/0000'
-    depth_map_path = '/Volumes/AndrewJayZhou/Dataset/FootPoseDepth/syn/v2/0000/0000.exr'
-    gt_path        = '/Volumes/AndrewJayZhou/Dataset/FootPoseDepth/syn/v2/0000/0000_joint_pos.txt'
+    data_root = '/Volumes/AndrewJayZhou/Dataset/FootPoseDepth/syn/v2'
+    save_root = '/Volumes/AndrewJayZhou/Dev/HandPointNet/data/blender_v2'
+  
+    depth_ext = '.exr'
+    jnt_gt_ext = '_joint_pos.txt'
 
-    point_cloud_FPS, volume_rotate, volume_length, volume_offset, volume_gt_xyz = preprocess(depth_map_path, gt_path)
-    np.save(os.path.join(dir, 'Point_Cloud_FPS.npy', point_cloud_FPS)
-    np.save(os.path.join(dir, 'Volume_rotate.npy', volume_rotate)
-    np.save(os.path.join(dir, 'Volume_length.npy', volume_length)
-    np.save(os.path.join(dir, 'Volume_offset.npy', volume_offset)
-    np.save(os.path.join(dir, 'Volume_GT_XYZ.npy', volume_gt_xyz)
+    sample_num = 1024
+    joint_num  = 13
+
+    for dir, _, fnames in sorted(os.walk(data_root)):
+        if dir == data_root:
+            continue
+
+        # save directory
+        set_folder = os.path.basename(dir)
+        save_dir   = os.path.join(save_root, set_folder)
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+
+        # filter fnames. keep only depth map files
+        fnames = [f for f in fnames if depth_ext in f]
+        frame_num = len(fnames)
+
+        # set specific arrays initialization
+        point_cloud_FPS = np.zeros((frame_num, sample_num, 6))
+        volume_rotate = np.zeros((frame_num,3,3))
+        volume_length = np.zeros((frame_num,1))
+        volume_offset = np.zeros((frame_num,3))
+        volume_gt_xyz = np.zeros((frame_num,joint_num,3))
+      
+        index = 0
+        for fname in fnames:
+            if index % 10 == 0:
+                print('processing set {} image {} ... '.format(set_folder, index))
+            # preprocess
+            depth_map_path = os.path.join(dir, fname)
+            gt_path        = depth_map_path.replace(depth_ext, jnt_gt_ext)
+            pc, coeff, max_bb3d_len, offset, jnt_xyz_normalized = preprocess(depth_map_path, gt_path)
+
+            # store image information in set specific arrays
+            point_cloud_FPS[index] = pc
+            volume_rotate[index]   = coeff
+            volume_length[index]   = max_bb3d_len
+            volume_offset[index]   = offset
+            volume_gt_xyz[index]   = jnt_xyz_normalized
+
+            index+=1
+
+        # save set specific arrays 
+        np.save(os.path.join(save_dir, 'Point_Cloud_FPS.npy'), point_cloud_FPS)
+        np.save(os.path.join(save_dir, 'Volume_rotate.npy'), volume_rotate)
+        np.save(os.path.join(save_dir, 'Volume_length.npy'), volume_length)
+        np.save(os.path.join(save_dir, 'Volume_offset.npy'), volume_offset)
+        np.save(os.path.join(save_dir, 'Volume_GT_XYZ.npy'), volume_gt_xyz)
+          
 
 
 
