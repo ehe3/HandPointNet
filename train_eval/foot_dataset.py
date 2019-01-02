@@ -63,9 +63,9 @@ class FootPointDataset(data.Dataset):
         tmp = self.PCA_mean.expand(self.total_frame_num, self.JOINT_NUM * 3)
         tmp_demean = self.gt_xyz - tmp
         self.gt_pca = torch.mm(tmp_demean, self.PCA_coeff)
-        
+
         self.PCA_coeff = self.PCA_coeff.transpose(0, 1).to(self.device)
-        self.PCA_mean = self.PCA_mean.to(self.device)
+        self.PCA_mean = self.PCA_mean.view(1,-1).to(self.device)
 
     def __getitem__(self, index):
         return self.point_clouds[index, :, :], self.volume_length[index], self.gt_pca[index, :], self.gt_xyz[index, :]
