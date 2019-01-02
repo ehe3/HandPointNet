@@ -56,8 +56,8 @@ parser.add_argument('--data_root', type=str, default = './preprocess', help='whe
 opt = parser.parse_args()
 print (opt)
 
-self.device = torch.device('cuda:{}'.format(opt.main_gpu)) if ngpu>0 else torch.device('cpu')
-self.data_root = opt.data_root
+device = torch.device('cuda:{}'.format(opt.main_gpu)) if opt.ngpu>0 else torch.device('cpu')
+data_root = opt.data_root
 
 opt.manualSeed = 1
 random.seed(opt.manualSeed)
@@ -75,11 +75,11 @@ logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%Y/%m/%d %H:%M:%S
 logging.info('======================================================')
 
 # 1. Load data
-train_data = FootPointDataset(root_path=self.data_root, opt=opt, train = True)
+train_data = FootPointDataset(root_path=data_root, opt=opt, train = True)
 train_dataloader = torch.utils.data.DataLoader(train_data, batch_size=opt.batchSize,
                                           shuffle=True, num_workers=int(opt.workers), pin_memory=False)
                                           
-test_data = FootPointDataset(root_path=self.data_root, opt=opt, train = False)
+test_data = FootPointDataset(root_path=data_root, opt=opt, train = False)
 test_dataloader = torch.utils.data.DataLoader(test_data, batch_size=opt.batchSize,
                                           shuffle=False, num_workers=int(opt.workers), pin_memory=False)
                                           
@@ -95,10 +95,10 @@ if opt.ngpu > 1:
 if opt.model != '':
     netR.load_state_dict(torch.load(os.path.join(save_dir, opt.model)))
     
-netR.to(self.device)
+netR.to(device)
 print(netR)
 
-criterion = nn.MSELoss(size_average=True).to(self.device)
+criterion = nn.MSELoss(size_average=True).to(device)
 optimizer = optim.Adam(netR.parameters(), lr=opt.learning_rate, betas = (0.5, 0.999), eps=1e-06)
 if opt.optimizer != '':
     optimizer.load_state_dict(torch.load(os.path.join(save_dir, opt.optimizer)))
@@ -124,8 +124,8 @@ for epoch in range(opt.nepoch):
             torch.cuda.synchronize()       
         # 3.1.1 load inputs and targets
         points, volume_length, gt_pca, gt_xyz = data
-        gt_pca = Variable(gt_pca, requires_grad=False).to(self.device)
-        points, volume_length, gt_xyz = points.to(self.device), volume_length.to(self.device), gt_xyz.to(self.device)
+        gt_pca = Variable(gt_pca, requires_grad=False).to(device)
+        points, volume_length, gt_xyz = points.to(device), volume_length.to(device), gt_xyz.to(device)
 
         # points: B * 1024 * 6; target: B * 42
         inputs_level1, inputs_level1_center = group_points(points, opt)
@@ -183,8 +183,8 @@ for epoch in range(opt.nepoch):
             torch.cuda.synchronize() 
         # 3.2.1 load inputs and targets
         points, volume_length, gt_pca, gt_xyz = data
-        gt_pca = Variable(gt_pca, volatile=True).to(self.device)
-        points, volume_length, gt_xyz = points.to(self.device), volume_length.to(self.device), gt_xyz.to(self.device)
+        gt_pca = Variable(gt_pca, volatile=True).to(device)
+        points, volume_length, gt_xyz = points.to(device), volume_length.to(device), gt_xyz.to(device)
         
         # points: B * 1024 * 6; target: B * 42
         inputs_level1, inputs_level1_center = group_points(points, opt)

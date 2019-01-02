@@ -1,0 +1,6 @@
+.gitignore
+README.md
+.DS_Store
+data
+results
+LICENSE
