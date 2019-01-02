@@ -35,7 +35,6 @@ parser.add_argument('--momentum', type=float, default=0.9, help='momentum (SGD o
 parser.add_argument('--weight_decay', type=float, default=0.0005, help='weight decay (SGD only)')
 parser.add_argument('--learning_rate_decay', type=float, default=1e-7, help='learning rate decay')
 
-parser.add_argument('--size', type=str, default='full', help='how many samples do we load: small | full')
 parser.add_argument('--SAMPLE_NUM', type=int, default = 1024,  help='number of sample points')
 parser.add_argument('--JOINT_NUM', type=int, default = 13,  help='number of joints')
 parser.add_argument('--INPUT_FEATURE_NUM', type=int, default = 6,  help='number of input point features')
