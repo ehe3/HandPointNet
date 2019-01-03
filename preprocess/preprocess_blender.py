@@ -36,7 +36,7 @@ def plot(points, gt):
     ax = Axes3D(fig)
     ax.scatter(points[:,0], points[:,1], points[:,2], c='b')
 
-    # plot 3d gt 
+    # plot 3d gt
     ax.scatter(gt[:,0], gt[:,1], gt[:,2], c='r')
     ax.view_init(90,-90)
     
