@@ -2,3 +2,6 @@
 data/cvpr15_MSRAHandGestureDB/*
 preprocess/P[0-9]
 train_eval/__pycache__
+train_eval/samples/
+train_eval/.ipynb_checkpoints/
+train_eval/*.ipynb
