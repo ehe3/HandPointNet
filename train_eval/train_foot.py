@@ -51,6 +51,7 @@ parser.add_argument('--model', type=str, default = '',  help='model name for tra
 parser.add_argument('--optimizer', type=str, default = '',  help='optimizer name for training resume')
 
 parser.add_argument('--data_root', type=str, default = './preprocess', help='where preprocessed data is stored')
+parser.add_argument('--save_freq', type=int, default = 5,  help='frequency to save training results')
 
 opt = parser.parse_args()
 print (opt)
@@ -167,9 +168,10 @@ for epoch in range(opt.nepoch):
     print('mean-square error of 1 sample: %f, #train_data = %d' %(train_mse, len(train_data)))
     print('average estimation error in world coordinate system: %f (mm)' %(train_mse_wld))
 
-    torch.save(netR.state_dict(), '%s/netR_%d.pth' % (save_dir, epoch))
-    torch.save(optimizer.state_dict(), '%s/optimizer_%d.pth' % (save_dir, epoch))
-    
+    if epoch % opt.save_freq == 0:
+        torch.save(netR.state_dict(), '%s/netR_%d.pth' % (save_dir, epoch))
+        torch.save(optimizer.state_dict(), '%s/optimizer_%d.pth' % (save_dir, epoch))
+        
     # 3.2 switch to evaluate mode
     if opt.ngpu>0:
         torch.cuda.synchronize() 

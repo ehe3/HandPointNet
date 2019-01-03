@@ -39,8 +39,7 @@ def plot(points, gt):
     # plot 3d gt 
     ax.scatter(gt[:,0], gt[:,1], gt[:,2], c='r')
     ax.view_init(90,-90)
-    pyplot.show()
-
+    
 
 def preprocess(depth_map_path, gt_path):
     # 1. Read depth files 

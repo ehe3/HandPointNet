@@ -2,3 +2,4 @@
 preprocess/P[0-9]
 train_eval/__pycache__
 data/*
+results/*
