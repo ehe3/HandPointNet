@@ -29,6 +29,7 @@ for sub_idx = 1:length(subject_names)
         A = fscanf(fileID,'%f', frame_num*21*3);
         gt_wld=reshape(A,[3,21,frame_num]);
         gt_wld(3,:,:) = -gt_wld(3,:,:);
+        % 500x21x3 double
         gt_wld=permute(gt_wld, [3 2 1]);
         
         fclose(fileID);

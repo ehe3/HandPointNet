@@ -65,8 +65,8 @@ save_dir = os.path.join(opt.save_root_dir, subject_names[opt.test_index])
 # 1. Load data                                         
 test_data = HandPointDataset(root_path='../preprocess', opt=opt, train = False)
 test_dataloader = torch.utils.data.DataLoader(test_data, batch_size=opt.batchSize,
-                                          shuffle=False, num_workers=int(opt.workers), pin_memory=False)
-                                          
+        shuffle=False, num_workers=int(opt.workers), pin_memory=False)
+
 print('#Test data:', len(test_data))
 print (opt)
 
@@ -93,49 +93,58 @@ test_mse = 0.0
 test_wld_err = 0.0
 timer = time.time()
 for i, data in enumerate(tqdm(test_dataloader, 0)):
-	# torch.cuda.synchronize()
-	# 3.1 load inputs and targets
+    # torch.cuda.synchronize()
+        # 3.1 load inputs and targets
 
-	'''
-	points: torch.Tensor, [32, 1024, 6]
-	volume_length: torch.Tensor, [32, 1]
-	gt_pca: torch.Tensor, [32, 42]
-	gt_xyz: torch.Tensor, [32, 63]
-	'''
-	points, volume_length, gt_pca, gt_xyz = data
+        '''
+        points: torch.Tensor, [32, 1024, 6]
+        volume_length: torch.Tensor, [32, 1]
+        gt_pca: torch.Tensor, [32, 42]
+        gt_xyz: torch.Tensor, [32, 63]
+        '''
+        points, volume_length, gt_pca, gt_xyz = data
 
-	# gt_pca = Variable(gt_pca, volatile=True).cuda()
-	gt_pca = Variable(gt_pca, volatile=True)
-	# points, volume_length, gt_xyz = points.cuda(), volume_length.cuda(), gt_xyz.cuda()
-	points, volume_length, gt_xyz = points, volume_length, gt_xyz
-	
-	# points: B * 1024 * 6
-	'''
-	inputs_level1: torch.Tensor, [32, 3, 512, 1]
-	inputs_level1_center: torch.Tensor, [32, 6, 512, 64]
-	'''
-	inputs_level1, inputs_level1_center = group_points(points, opt)
-	inputs_level1, inputs_level1_center = Variable(inputs_level1, volatile=True), Variable(inputs_level1_center, volatile=True)
-	
-	# 3.2 compute output
-	'''
-	estimation: torch.Tensor, [32, 42]
-	'''
-	estimation = netR(inputs_level1, inputs_level1_center)
-	loss = criterion(estimation, gt_pca)*opt.PCA_SZ
-	# torch.cuda.synchronize()
-	test_mse = test_mse + loss.item()*len(points)
+        # gt_pca = Variable(gt_pca, volatile=True).cuda()
+        gt_pca = Variable(gt_pca, volatile=True)
+        # points, volume_length, gt_xyz = points.cuda(), volume_length.cuda(), gt_xyz.cuda()
+        points, volume_length, gt_xyz = points, volume_length, gt_xyz
 
-	# 3.3 compute error in world cs        
-	outputs_xyz = test_data.PCA_mean.expand(estimation.data.size(0), test_data.PCA_mean.size(1))
-	outputs_xyz = torch.addmm(outputs_xyz, estimation.data, test_data.PCA_coeff)
-	diff = torch.pow(outputs_xyz-gt_xyz, 2).view(-1,opt.JOINT_NUM,3)
-	diff_sum = torch.sum(diff,2)
-	diff_sum_sqrt = torch.sqrt(diff_sum)
-	diff_mean = torch.mean(diff_sum_sqrt,1).view(-1,1)
-	diff_mean_wld = torch.mul(diff_mean,volume_length)
-	test_wld_err = test_wld_err + diff_mean_wld.sum()
-	
+        # points: B * 1024 * 6
+        '''
+        inputs_level1: torch.Tensor, [32, 3, 512, 1]
+        inputs_level1_center: torch.Tensor, [32, 6, 512, 64]
+        '''
+        inputs_level1, inputs_level1_center = group_points(points, opt)
+        inputs_level1, inputs_level1_center = Variable(inputs_level1, volatile=True), Variable(inputs_level1_center, volatile=True)
+
+        # 3.2 compute output
+        '''
+        estimation: torch.Tensor, [32, 42]
+        '''
+        estimation = netR(inputs_level1, inputs_level1_center)
+        loss = criterion(estimation, gt_pca)*opt.PCA_SZ
+        # torch.cuda.synchronize()
+        test_mse = test_mse + loss.item()*len(points)
+
+        # 3.3 compute error in world cs 
+        '''
+        estimation.data.size(0) = 32
+        test_data.PCA_mean.size(1) = 63
+        outputs_xyz: torch.Tensor, [32, 63]
+        estimation.data: torch.Tensor, [32, 42]
+        test_data.PCA_coeff: torch.Tensor, [42, 63]
+        '''
+        outputs_xyz = test_data.PCA_mean.expand(estimation.data.size(0), test_data.PCA_mean.size(1))
+        # outputs_xyz = outputs_xyz + estimation.data * test_data.PCA_coeff
+        outputs_xyz = torch.addmm(outputs_xyz, estimation.data, test_data.PCA_coeff)
+        print(outputs_xyz)
+        diff = torch.pow(outputs_xyz-gt_xyz, 2).view(-1,opt.JOINT_NUM,3)
+        diff_sum = torch.sum(diff,2)
+        diff_sum_sqrt = torch.sqrt(diff_sum)
+        diff_mean = torch.mean(diff_sum_sqrt,1).view(-1,1)
+        diff_mean_wld = torch.mul(diff_mean,volume_length)
+        test_wld_err = test_wld_err + diff_mean_wld.sum()
+
 # time taken
 # torch.cuda.synchronize()
 timer = time.time() - timer

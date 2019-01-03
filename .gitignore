@@ -3,3 +3,7 @@ preprocess/P[0-9]
 train_eval/__pycache__
 data/*
 results/*
+train_eval/samples/
+train_eval/.ipynb_checkpoints/
+train_eval/*.ipynb
+
