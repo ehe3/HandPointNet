@@ -22,6 +22,7 @@ from torch.autograd import Variable
 from foot_dataset import FootPointDataset
 from network import PointNet_Plus
 from utils import group_points
+from visualizer import Visualizer
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--batchSize', type=int, default=32, help='input batch size')
@@ -70,6 +71,7 @@ try:
 except OSError:
     pass
 
+visualizer = Visualizer(save_dir)
 logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%Y/%m/%d %H:%M:%S', \
                     filename=os.path.join(save_dir, 'train.log'), level=logging.INFO)
 logging.info('======================================================')
@@ -222,3 +224,5 @@ for epoch in range(opt.nepoch):
     print('average estimation error in world coordinate system: %f (mm)' %(test_wld_err))
     # log
     logging.info('Epoch#%d: train error=%e, train wld error = %f mm, test error=%e, test wld error = %f mm, lr = %f' %(epoch, train_mse, train_mse_wld, test_mse, test_wld_err, scheduler.get_lr()[0]))
+    # Visdom
+    visualizer.plot(epoch, train_mse_wld, test_wld_err)

@@ -1,6 +1,6 @@
 ### Example Commands
 
-ssh -i ML.pem ubuntu@ec2-18-220-136-141.us-east-2.compute.amazonaws.com
+ssh -i ML_Northern_Virginia.pem ubuntu@ec2-18-220-136-141.us-east-2.compute.amazonaws.com
 
 aws s3 sync s3://foot-point-net dataset
 
@@ -10,4 +10,4 @@ python train_eval/train_foot.py --data_root data/blender_v2 --save_root_dir resu
 
 
 # cpu
-python3 train_eval/train_foot.py --data_root data/blender_v2 --ngpu 0 
+python3 train_eval/train_foot.py --data_root data/blender_v2 --ngpu 0 --save_root_dir 
