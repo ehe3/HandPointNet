@@ -6,7 +6,7 @@ import pptk
 import cv2
 import os
 
-root_dir  = '/Volumes/AndrewJayZhou/Dev/HandPointNet/data/blender_v2'
+root_dir  = '/Volumes/AndrewJayZhou/Dev/HandPointNet/data/v3_40k'
 joint_num = 13
 
 gt_xyz_file = 'Volume_GT_XYZ.npy'

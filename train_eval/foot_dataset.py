@@ -14,8 +14,7 @@ class FootPointDataset(data.Dataset):
         self.device = torch.device('cuda:{}'.format(opt.main_gpu)) if opt.ngpu>0 else torch.device('cpu')
         self.root_path = root_path
         self.train = train
-        self.size = opt.size
-        self.test_index = opt.test_index
+        self.test_suffix = opt.test_suffix
 
         self.PCA_SZ = opt.PCA_SZ
         self.SAMPLE_NUM = opt.SAMPLE_NUM
@@ -32,19 +31,18 @@ class FootPointDataset(data.Dataset):
         self.start_index = 0
         self.end_index = 0
 
-        if self.train:  # train
-            for cur_data_dir, _, _ in sorted(os.walk(self.root_path)):
-                if cur_data_dir == root_path:
-                    continue
-                cur_index = int(os.path.basename(cur_data_dir))
-                if cur_index == self.test_index:
-                    continue
+        for cur_data_dir, _, _ in sorted(os.walk(self.root_path)):
+            if cur_data_dir == self.root_path:
+                continue
+            
+            if self.test_suffix in cur_data_dir and not self.train: # Testing
+                print("Testing: " + cur_data_dir)
+                self.__loaddata(cur_data_dir)
+            elif not self.test_suffix in cur_data_dir and self.train: # Training
                 print("Training: " + cur_data_dir)
                 self.__loaddata(cur_data_dir)
-        else:  # test
-            cur_data_dir = os.path.join(self.root_path, str(self.test_index).zfill(4))
-            print("Testing: " + cur_data_dir)
-            self.__loaddata(cur_data_dir)
+            else:
+                continue
 
         self.point_clouds = torch.from_numpy(self.point_clouds)
         self.volume_length = torch.from_numpy(self.volume_length)
@@ -87,20 +85,17 @@ class FootPointDataset(data.Dataset):
 
     def __total_frmae_num(self):
         frame_num = 0
-        if self.train:  # train
-            for cur_data_dir, _, _ in sorted(os.walk(self.root_path)):
-                if cur_data_dir == self.root_path:
-                    continue
 
-                cur_index = int(os.path.basename(cur_data_dir))
-                if cur_index == self.test_index:
-                    continue
-
+        for cur_data_dir, _, _ in sorted(os.walk(self.root_path)):
+            if cur_data_dir == self.root_path:
+                continue
+            
+            if self.test_suffix in cur_data_dir and not self.train: # Testing
                 frame_num = frame_num + self.__get_frmae_num(cur_data_dir)
-
-        else:  # test
-            cur_data_dir = os.path.join(self.root_path, str(self.test_index).zfill(4))
-            frame_num = frame_num + self.__get_frmae_num(cur_data_dir)
+            elif not self.test_suffix in cur_data_dir and self.train: # Training
+                frame_num = frame_num + self.__get_frmae_num(cur_data_dir)
+            else:
+                continue
 
         return frame_num
 

@@ -46,7 +46,7 @@ parser.add_argument('--sample_num_level2', type=int, default = 128,  help='numbe
 parser.add_argument('--ball_radius', type=float, default=0.015, help='square of radius for ball query in level 1')
 parser.add_argument('--ball_radius2', type=float, default=0.04, help='square of radius for ball query in level 2')
 
-parser.add_argument('--test_index', type=int, default = 0,  help='test index for cross validation')
+parser.add_argument('--test_suffix', type=str, default = '_TEST',  help='folders that contain this suffix are for testing')
 parser.add_argument('--save_root_dir', type=str, default='results',  help='output folder')
 parser.add_argument('--model', type=str, default = '',  help='model name for training resume')
 parser.add_argument('--optimizer', type=str, default = '',  help='optimizer name for training resume')
@@ -109,7 +109,7 @@ scheduler = lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.1)
 # 3. Training and testing
 for epoch in range(opt.nepoch):
     scheduler.step(epoch)
-    print('======>>>>> Online epoch: #%d, lr=%f, Test: %s <<<<<======' %(epoch, scheduler.get_lr()[0], opt.test_index))
+    print('======>>>>> Online epoch: #%d, lr=%f<<<<<======' %(epoch, scheduler.get_lr()[0]))
     # 3.1 switch to train mode
     if opt.ngpu>0:
         torch.cuda.synchronize() 
@@ -225,4 +225,4 @@ for epoch in range(opt.nepoch):
     # log
     logging.info('Epoch#%d: train error=%e, train wld error = %f mm, test error=%e, test wld error = %f mm, lr = %f' %(epoch, train_mse, train_mse_wld, test_mse, test_wld_err, scheduler.get_lr()[0]))
     # Visdom
-    visualizer.plot(epoch, train_mse_wld, test_wld_err)
+    visualizer.plot(epoch, train_mse_wld, test_wld_err, scheduler.get_lr()[0])

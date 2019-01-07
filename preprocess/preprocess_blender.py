@@ -164,8 +164,8 @@ def preprocess(depth_map_path, gt_path):
 
 
 if __name__ == "__main__":
-    data_root = '/Volumes/AndrewJayZhou/Dataset/FootPoseDepth/syn/v2'
-    save_root = '/Volumes/AndrewJayZhou/Dev/HandPointNet/data/blender_v2'
+    data_root = '/Volumes/AndrewJayZhou/Dataset/FootPoseDepth/syn/v3_40k'
+    save_root = '/Volumes/AndrewJayZhou/Dev/HandPointNet/data/v3_40k'
   
     depth_ext = '.exr'
     jnt_gt_ext = '_joint_pos.txt'

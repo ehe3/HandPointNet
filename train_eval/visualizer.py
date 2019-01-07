@@ -10,11 +10,11 @@ class Visualizer():
         self.log_dir  = log_dir
         self.viz      = Visdom(port=DEFAULT_PORT, server=DEFAULT_HOSTNAME, log_to_filename=os.path.join(self.log_dir, 'visdom.log'))
         self.window   = None
-        self.legend   = ['train wld loss (mm)', 'test wld loss (mm)']
+        self.legend   = ['train wld loss (mm)', 'test wld loss (mm)', 'lr']
 
-    def plot(self, epoch, train_loss, test_loss):
-        x = np.array([[epoch] * 2])
-        y = np.array([[train_loss,test_loss]])
+    def plot(self, epoch, train_loss, test_loss, lr):
+        x = np.array([[epoch] * 3])
+        y = np.array([[train_loss,test_loss, lr]])
         
         if self.window == None:
             self.window = self.viz.line(X=x, 
