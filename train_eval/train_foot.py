@@ -34,7 +34,6 @@ parser.add_argument('--main_gpu', type=int, default=0, help='main GPU id') # CUD
 parser.add_argument('--learning_rate', type=float, default=0.001, help='learning rate at t=0')
 parser.add_argument('--momentum', type=float, default=0.9, help='momentum (SGD only)')
 parser.add_argument('--weight_decay', type=float, default=0.0005, help='weight decay (SGD only)')
-parser.add_argument('--learning_rate_decay', type=float, default=1e-7, help='learning rate decay')
 
 parser.add_argument('--SAMPLE_NUM', type=int, default = 1024,  help='number of sample points')
 parser.add_argument('--JOINT_NUM', type=int, default = 13,  help='number of joints')
@@ -53,6 +52,8 @@ parser.add_argument('--optimizer', type=str, default = '',  help='optimizer name
 
 parser.add_argument('--data_root', type=str, default = './preprocess', help='where preprocessed data is stored')
 parser.add_argument('--save_freq', type=int, default = 5,  help='frequency to save training results')
+parser.add_argument('--step_size', type=int, default = 50,  help='frequency to modify learning rate')
+parser.add_argument('--gamma', type=float, default = 0.1,  help='learning rate decay')
 
 opt = parser.parse_args()
 print (opt)
@@ -104,7 +105,7 @@ criterion = nn.MSELoss(size_average=True).to(device)
 optimizer = optim.Adam(netR.parameters(), lr=opt.learning_rate, betas = (0.5, 0.999), eps=1e-06)
 if opt.optimizer != '':
     optimizer.load_state_dict(torch.load(os.path.join(save_dir, opt.optimizer)))
-scheduler = lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.1)
+scheduler = lr_scheduler.StepLR(optimizer, step_size=opt.step_size, gamma=opt.gamma)
 
 # 3. Training and testing
 for epoch in range(opt.nepoch):
