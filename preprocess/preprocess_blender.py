@@ -59,7 +59,8 @@ def preprocess(depth_map_path, gt_path, add_noise=False):
 
     # create synthetic noise
     if add_noise: 
-        std = np.random.uniform(0.005,0.15)
+        mean = np.random.uniform(-0.05, 0.05)
+        std = np.random.uniform(0.005,0.12)
         noise = np.random.normal(0,std, depth_map.shape)
         depth_map += noise
 
