@@ -41,7 +41,7 @@ def plot(points, gt):
     ax.view_init(90,-90)
     
 
-def preprocess(depth_map_path, gt_path):
+def preprocess(depth_map_path, gt_path, add_noise=False):
     # 1. Read depth files 
     img_width = 256
     img_height = 256
@@ -56,6 +56,12 @@ def preprocess(depth_map_path, gt_path):
     # hand_depth = np.asarray(struct.unpack('{}f'.format(valid_pixel_num), f.read(4 * valid_pixel_num))).reshape((bb_height, bb_width))
     depth_map = cv2.imread(depth_map_path, cv2.IMREAD_UNCHANGED)
     depth_map = depth_map[:,:,0] #rgb channels have same information. take one
+
+    # create synthetic noise
+    if add_noise: 
+        std = np.random.uniform(0.005,0.15)
+        noise = np.random.normal(0,std, depth_map.shape)
+        depth_map += noise
 
     # 2. Convert Depth to XYZ
     PIXEL_SIZE_mm = 1/8
@@ -201,7 +207,7 @@ if __name__ == "__main__":
             # preprocess
             depth_map_path = os.path.join(dir, fname)
             gt_path        = depth_map_path.replace(depth_ext, jnt_gt_ext)
-            pc, coeff, max_bb3d_len, offset, jnt_xyz_normalized = preprocess(depth_map_path, gt_path)
+            pc, coeff, max_bb3d_len, offset, jnt_xyz_normalized = preprocess(depth_map_path, gt_path, add_noise=True)
 
             # store image information in set specific arrays
             point_cloud_FPS[index] = pc
