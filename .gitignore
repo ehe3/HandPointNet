@@ -1,9 +1,15 @@
 .DS_Store
+preprocess/__pycache__/*
 preprocess/P[0-9]
+preprocess/P10
 train_eval/__pycache__
 data/*
 results/*
 train_eval/samples/
 train_eval/.ipynb_checkpoints/
 train_eval/*.ipynb
-
+train_eval/results/P10/
+.ipynb_checkpoints/*
+stream/samples
+view/samples
+__pycache__

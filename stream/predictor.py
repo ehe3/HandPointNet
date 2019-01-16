@@ -30,9 +30,9 @@ class Predictor():
 
     # image is a numpy array representing the depth image
     def make_prediction(self, image):
+        np.set_printoptions(threshold=np.inf)
         img_height, img_width = image.shape
         bb_left, bb_top, bb_right, bb_bottom, bb_width, bb_height = 0, 0, img_width, img_height, img_width, img_height
-        #img_width, img_height, bb_left, bb_top, bb_right, bb_bottom, bb_width, bb_height = 320, 240, 134, 63, 206, 197, 72, 134
         valid_pixel_num = img_height * img_width
         
         # Convert depth to XYZ
@@ -40,10 +40,10 @@ class Predictor():
         for i in range(0, bb_height):
           for j in range(0, bb_width):
             idx = j * bb_height + i
-            hand_3d[idx][0] = -1 * (img_width / 2. - (j + bb_left)) * image[i][j] / self.fx
-            hand_3d[idx][1] = (img_height / 2. - (i + bb_top)) * image[i][j] / self.fy
+            z = image[i][j]
+            hand_3d[idx][0] = -1 * (img_width / 2. - (j + bb_left)) * z / self.fx
+            hand_3d[idx][1] = (img_height / 2. - (i + bb_top)) * z / self.fy
             hand_3d[idx][2] = image[i][j]
-
         # remove entries where all 3D values are equal to 0
         hand_points = hand_3d[(hand_3d[:,0] != 0) | (hand_3d[:,1] != 0) | (hand_3d[:,2] != 0)]
         # remove entries further from the clipping dist
@@ -76,7 +76,7 @@ class Predictor():
         hand_points_rotate_sampled = hand_points_rotate[rand_ind, :]
         
         # 2.5 Compute Surface Normal
-        normals = pptk.estimate_normals(points=hand_points, k=30, r=np.inf)
+        normals = pptk.estimate_normals(points=hand_points, k=30, r=np.inf, verbose=False)
         normals_sampled = normals[rand_ind]
         sensor_center = np.array([0, 0, 0])
         
@@ -160,16 +160,20 @@ class Predictor():
         '''
         estimation: torch.Tensor, [1, 42]
         '''
-        outputs_xyz_mat = sio.loadmat('../preprocess/P0/PCA_mean_xyz.mat')
-        outputs_xyz = torch.from_numpy(outputs_xyz_mat['PCA_mean_xyz'].astype(np.float32))
-        PCA_coeff_mat = sio.loadmat('../preprocess/P0/PCA_coeff.mat')
-        PCA_coeff = torch.from_numpy(PCA_coeff_mat['PCA_coeff'][:, 0:42].astype(np.float32)).transpose(0, 1)
-        outputs_xyz = torch.addmm(outputs_xyz, estimation, PCA_coeff)
+        # outputs_xyz_mat = sio.loadmat('../preprocess/P0/PCA_mean_xyz.mat')
+        # outputs_xyz = torch.from_numpy(outputs_xyz_mat['PCA_mean_xyz'].astype(np.float32))
+        # PCA_coeff_mat = sio.loadmat('../preprocess/P0/PCA_coeff.mat')
+        # PCA_coeff = torch.from_numpy(PCA_coeff_mat['PCA_coeff'][:, 0:42].astype(np.float32)).transpose(0, 1)
         
+        PCA_mean = torch.from_numpy(np.load('../preprocess/P10/PCA_mean_xyz.npy').astype(np.float32)).unsqueeze(0)
+        PCA_coeff = torch.from_numpy(np.load('../preprocess/P10/PCA_coeff.npy')[:, 0:26].astype(np.float32)).transpose(0, 1)
+      
+        outputs_xyz = PCA_mean.expand(1, PCA_mean.size(1))
+        outputs_xyz = torch.addmm(outputs_xyz, estimation.data, PCA_coeff)
         # Unnormalize Output
-        outputs_xyz = np.matmul(max_bb3d_len * (outputs_xyz.view(-1, 3).detach().numpy() + offset), np.linalg.inv(coeff)) 
-        outputs_xy = outputs_xyz[:, 0:2]
-        outputs_xy[:, 0] = outputs_xy[:, 0] + img_width / 2
-        outputs_xy[:, 1] = -1 * outputs_xy[:, 1] + img_height / 2
-        
-        return outputs_xy 
+        outputs_xyz = outputs_xyz.numpy().reshape((13, 3))
+        #outputs_xyz[:, 0] = outputs_xyz[:, 0] + img_width / 2
+        #outputs_xyz[:, 1] = -1 * outputs_xyz[:, 1] + img_height / 2
+        #outputs_xyz[:, 2] = outputs_xyz[:, 2] / self.depth_scale
+
+        return pc, outputs_xyz
