@@ -6,7 +6,7 @@ import pptk
 import cv2
 import os
 
-np.set_printoptions(threshold=np.nan)
+# np.set_printoptions(threshold=np.nan)
 
 # Takes in a point cloud and a sample number K and approximates the K furthest points in the PC
 def farthest_point_sampling_fast(point_cloud, sample_num):
