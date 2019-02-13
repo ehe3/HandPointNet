@@ -62,9 +62,9 @@ def group_points_onnx(points, sample_num_level1, sample_num_level2, knn_K, ball_
     cur_train_size = points.size(0)
 
     tmp_a = points[:,0:3,:].unsqueeze(1)
-    print(tmp_a.size())
+    #print(tmp_a.size())
     tmp_a = tmp_a.expand(cur_train_size,sample_num_level2,3,sample_num_level1)
-    print(tmp_a.size())
+    #print(tmp_a.size())
     tmp_b = points[:,0:3,0:sample_num_level2].transpose(1,2)
     tmp_b = tmp_b.unsqueeze(-1)
     tmp_b = tmp_b.expand(cur_train_size,sample_num_level2,3,sample_num_level1)
